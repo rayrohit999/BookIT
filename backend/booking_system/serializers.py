@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from datetime import datetime, time
-from .models import Booking, VenueAdmin
+from .models import Booking, VenueAdmin, Notification
 from venue_management.serializers import VenueListSerializer
 from accounts.serializers import UserSerializer
 
@@ -236,3 +236,51 @@ class VenueAdminSerializer(serializers.ModelSerializer):
                 )
         
         return attrs
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Serializer for Notification model"""
+    
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    time_ago = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'user', 'user_name', 'notification_type', 'title', 'message',
+            'link', 'is_read', 'created_at', 'read_at', 'time_ago',
+            'related_booking_id', 'related_venue_id'
+        ]
+        read_only_fields = ['id', 'user', 'created_at', 'read_at', 'user_name', 'time_ago']
+    
+    def get_time_ago(self, obj):
+        """Calculate time ago string"""
+        from django.utils import timezone
+        now = timezone.now()
+        diff = now - obj.created_at
+        
+        seconds = diff.total_seconds()
+        if seconds < 60:
+            return 'Just now'
+        elif seconds < 3600:
+            minutes = int(seconds / 60)
+            return f'{minutes} minute{"s" if minutes != 1 else ""} ago'
+        elif seconds < 86400:
+            hours = int(seconds / 3600)
+            return f'{hours} hour{"s" if hours != 1 else ""} ago'
+        elif seconds < 604800:
+            days = int(seconds / 86400)
+            return f'{days} day{"s" if days != 1 else ""} ago'
+        else:
+            return obj.created_at.strftime('%B %d, %Y')
+
+
+class NotificationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating notifications"""
+    
+    class Meta:
+        model = Notification
+        fields = [
+            'user', 'notification_type', 'title', 'message', 'link',
+            'related_booking_id', 'related_venue_id'
+        ]

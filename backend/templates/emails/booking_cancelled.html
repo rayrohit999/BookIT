@@ -1,0 +1,84 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Booking Cancelled - BookIT{% endblock %}
+
+{% block content %}
+<h2>Booking Cancelled ❌</h2>
+
+<p>Dear {{ user.get_full_name }},</p>
+
+<p>Your venue booking has been cancelled. Here are the details:</p>
+
+<div class="alert alert-danger">
+    <strong>✗ Booking ID:</strong> #{{ booking.id }} - CANCELLED
+</div>
+
+<table class="details-table">
+    <tr>
+        <td>Event Name</td>
+        <td><strong>{{ booking.event_name }}</strong></td>
+    </tr>
+    <tr>
+        <td>Venue</td>
+        <td><strong>{{ booking.venue.name }}</strong></td>
+    </tr>
+    <tr>
+        <td>Date</td>
+        <td><strong>{{ booking.date|date:"F j, Y" }} ({{ booking.date|date:"l" }})</strong></td>
+    </tr>
+    <tr>
+        <td>Time</td>
+        <td><strong>{{ booking.start_time|time:"g:i A" }} - {{ booking.end_time|time:"g:i A" }}</strong></td>
+    </tr>
+    <tr>
+        <td>Cancellation Date</td>
+        <td>{{ booking.cancelled_at|date:"F j, Y g:i A" }}</td>
+    </tr>
+    {% if cancelled_by and cancelled_by != user %}
+    <tr>
+        <td>Cancelled By</td>
+        <td>{{ cancelled_by.get_full_name }} ({{ cancelled_by.get_role_display }})</td>
+    </tr>
+    {% endif %}
+    {% if booking.cancellation_reason %}
+    <tr>
+        <td>Cancellation Reason</td>
+        <td><strong>{{ booking.cancellation_reason }}</strong></td>
+    </tr>
+    {% endif %}
+</table>
+
+{% if cancelled_by and cancelled_by != user %}
+<div class="alert alert-warning">
+    <strong>⚠️ Administrative Cancellation</strong><br>
+    This booking was cancelled by {{ cancelled_by.get_role_display }}. If you have any questions or concerns, please contact the administration.
+</div>
+{% else %}
+<div class="info-box">
+    <h3>ℹ️ Cancellation Confirmed</h3>
+    <p>Your cancellation has been processed. The venue is now available for others to book during this time slot.</p>
+</div>
+{% endif %}
+
+<div class="info-box">
+    <h3>📅 Need to Book Again?</h3>
+    <p>You can browse available venues and make a new booking anytime through BookIT.</p>
+</div>
+
+<div style="text-align: center;">
+    <a href="http://localhost:3000/venues" class="btn">Browse Venues</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #666666; font-size: 14px;">
+    <strong>Original Booking Date:</strong> {{ booking.created_at|date:"F j, Y g:i A" }}<br>
+    <strong>Booked By:</strong> {{ user.get_full_name }} ({{ user.email }})
+</p>
+
+<p style="margin-top: 30px;">
+    We hope to serve you again soon!<br>
+    <strong>BookIT Team</strong><br>
+    PCCOE
+</p>
+{% endblock %}

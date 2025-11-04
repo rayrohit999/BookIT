@@ -265,3 +265,48 @@ export const venueAdminService = {
     return response.data;
   },
 };
+
+// Notification Services
+export const notificationService = {
+  // Get all notifications
+  getAll: async (params = {}) => {
+    const response = await api.get('/notifications/', { params });
+    return response.data;
+  },
+
+  // Get recent notifications (last 10)
+  getRecent: async () => {
+    const response = await api.get('/notifications/recent/');
+    return response.data;
+  },
+
+  // Get unread count
+  getUnreadCount: async () => {
+    const response = await api.get('/notifications/unread_count/');
+    return response.data;
+  },
+
+  // Mark notification as read
+  markAsRead: async (id) => {
+    const response = await api.post(`/notifications/${id}/mark_read/`);
+    return response.data;
+  },
+
+  // Mark all as read
+  markAllAsRead: async () => {
+    const response = await api.post('/notifications/mark_all_read/');
+    return response.data;
+  },
+
+  // Delete notification
+  delete: async (id) => {
+    const response = await api.delete(`/notifications/${id}/`);
+    return response.data;
+  },
+
+  // Clear all read notifications
+  clearAll: async () => {
+    const response = await api.delete('/notifications/clear_all/');
+    return response.data;
+  },
+};

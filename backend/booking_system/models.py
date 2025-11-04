@@ -225,3 +225,7 @@ class VenueAdmin(models.Model):
         """Validate venue admin assignment"""
         if self.user and self.user.role != 'hall_admin':
             raise ValidationError('Only users with hall_admin role can be assigned as venue administrators')
+
+
+# Import Notification model from separate file to keep models organized
+from .notification_models import Notification

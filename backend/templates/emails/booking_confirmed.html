@@ -1,0 +1,106 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Booking Confirmed - BookIT{% endblock %}
+
+{% block content %}
+<h2>Booking Confirmed! ✅</h2>
+
+<p>Dear {{ user.get_full_name }},</p>
+
+<p>Your venue booking has been successfully confirmed. Here are your booking details:</p>
+
+<div class="alert alert-success">
+    <strong>✓ Booking ID:</strong> #{{ booking.id }}
+</div>
+
+<table class="details-table">
+    <tr>
+        <td>Event Name</td>
+        <td><strong>{{ booking.event_name }}</strong></td>
+    </tr>
+    <tr>
+        <td>Venue</td>
+        <td><strong>{{ booking.venue.name }}</strong></td>
+    </tr>
+    <tr>
+        <td>Location</td>
+        <td>{{ booking.venue.location }}</td>
+    </tr>
+    <tr>
+        <td>Date</td>
+        <td><strong>{{ booking.date|date:"F j, Y" }} ({{ booking.date|date:"l" }})</strong></td>
+    </tr>
+    <tr>
+        <td>Time</td>
+        <td><strong>{{ booking.start_time|time:"g:i A" }} - {{ booking.end_time|time:"g:i A" }}</strong></td>
+    </tr>
+    <tr>
+        <td>Expected Attendees</td>
+        <td>{{ booking.expected_attendees }} people</td>
+    </tr>
+    <tr>
+        <td>Venue Capacity</td>
+        <td>{{ booking.venue.capacity }} people</td>
+    </tr>
+    {% if booking.event_description %}
+    <tr>
+        <td>Event Description</td>
+        <td>{{ booking.event_description }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+        <td>Contact Number</td>
+        <td>{{ booking.contact_number }}</td>
+    </tr>
+    {% if booking.special_requirements %}
+    <tr>
+        <td>Special Requirements</td>
+        <td>{{ booking.special_requirements }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+        <td>Booking Status</td>
+        <td><span style="color: #4caf50; font-weight: 600;">{{ booking.status|upper }}</span></td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <h3>📋 Important Information</h3>
+    <p><strong>Please note:</strong></p>
+    <ul style="margin: 10px 0; padding-left: 20px;">
+        <li>Arrive at least 15 minutes before your booking time</li>
+        <li>Ensure the venue is clean and tidy after use</li>
+        <li>Report any issues or damages immediately</li>
+        <li>Cancel at least 2 hours in advance if plans change</li>
+    </ul>
+</div>
+
+{% if booking.venue.facilities %}
+<div class="info-box">
+    <h3>🏢 Venue Facilities</h3>
+    <p>{{ booking.venue.facilities }}</p>
+</div>
+{% endif %}
+
+<div class="alert alert-info">
+    <strong>📞 Need to make changes?</strong><br>
+    You can view or cancel your booking by logging into BookIT.
+</div>
+
+<div style="text-align: center;">
+    <a href="http://localhost:3000/my-bookings" class="btn btn-success">View My Bookings</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #666666; font-size: 14px;">
+    <strong>Booking Date:</strong> {{ booking.created_at|date:"F j, Y g:i A" }}<br>
+    <strong>Booked By:</strong> {{ user.get_full_name }} ({{ user.email }})
+</p>
+
+<p style="margin-top: 30px;">
+    Thank you for using BookIT!<br>
+    <strong>BookIT Team</strong><br>
+    PCCOE
+</p>
+{% endblock %}

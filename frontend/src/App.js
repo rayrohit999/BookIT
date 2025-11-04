@@ -21,6 +21,7 @@ import PublicCalendarPage from './pages/PublicCalendarPage';
 import HallAdminDashboard from './pages/HallAdminDashboard';
 import HallAdminBookingsPage from './pages/HallAdminBookingsPage';
 import AssignedVenuesPage from './pages/AssignedVenuesPage';
+import NotificationsPage from './pages/NotificationsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Protected Route Component
@@ -120,6 +121,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <NotificationsPage />
                   </ProtectedRoute>
                 }
               />

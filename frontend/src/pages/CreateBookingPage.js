@@ -40,6 +40,32 @@ const CreateBookingPage = () => {
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
 
+  // Generate time slots from 8:00 AM to 9:00 PM in 30-minute intervals
+  const generateTimeSlots = () => {
+    const slots = [];
+    const startHour = 8; // 8 AM
+    const endHour = 21; // 9 PM (21:00 in 24-hour format)
+    
+    for (let hour = startHour; hour <= endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        // Stop at 9:00 PM (don't add 9:30 PM)
+        if (hour === endHour && minute > 0) break;
+        
+        const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const hour12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const minuteStr = minute.toString().padStart(2, '0');
+        
+        slots.push({
+          value: time24,
+          label: `${hour12}:${minuteStr} ${period}`
+        });
+      }
+    }
+    
+    return slots;
+  };
+
   useEffect(() => {
     fetchVenues();
   }, []);
@@ -156,6 +182,10 @@ const CreateBookingPage = () => {
         Fill in the details below to book a venue
       </Typography>
 
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <strong>Booking Hours:</strong> 8:00 AM - 9:00 PM | <strong>Minimum Duration:</strong> 1 hour
+      </Alert>
+
       {success && (
         <Alert severity="success" sx={{ mb: 3 }}>
           Booking created successfully! Redirecting...
@@ -223,31 +253,47 @@ const CreateBookingPage = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               fullWidth
-              type="time"
+              select
               label="Start Time"
               name="start_time"
               value={formData.start_time}
               onChange={handleChange}
               error={!!errors.start_time}
-              helperText={errors.start_time}
+              helperText={errors.start_time || 'Select booking start time'}
               margin="normal"
               required
-              InputLabelProps={{ shrink: true }}
-            />
+            >
+              <MenuItem value="">
+                <em>Select start time</em>
+              </MenuItem>
+              {generateTimeSlots().map((time) => (
+                <MenuItem key={time.value} value={time.value}>
+                  {time.label}
+                </MenuItem>
+              ))}
+            </TextField>
 
             <TextField
               fullWidth
-              type="time"
+              select
               label="End Time"
               name="end_time"
               value={formData.end_time}
               onChange={handleChange}
               error={!!errors.end_time}
-              helperText={errors.end_time || errors.time}
+              helperText={errors.end_time || errors.time || 'Select booking end time'}
               margin="normal"
               required
-              InputLabelProps={{ shrink: true }}
-            />
+            >
+              <MenuItem value="">
+                <em>Select end time</em>
+              </MenuItem>
+              {generateTimeSlots().map((time) => (
+                <MenuItem key={time.value} value={time.value}>
+                  {time.label}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
 
           {formData.venue && formData.date && formData.start_time && formData.end_time && (

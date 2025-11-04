@@ -45,7 +45,9 @@ const MyBookingsPage = () => {
     try {
       setLoading(true);
       const data = await bookingService.getMyBookings();
-      setBookings(data);
+      // Handle both paginated and non-paginated responses
+      const bookingsList = data.results || data;
+      setBookings(Array.isArray(bookingsList) ? bookingsList : []);
       setError('');
     } catch (err) {
       setError(handleApiError(err));

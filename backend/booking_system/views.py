@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.utils import timezone
 from datetime import datetime
-from .models import Booking, VenueAdmin
+from .models import Booking, VenueAdmin, Notification
 from .serializers import (
     BookingSerializer,
     BookingCreateSerializer,
@@ -12,10 +12,27 @@ from .serializers import (
     BookingCancelSerializer,
     BookingListSerializer,
     CheckAvailabilitySerializer,
-    VenueAdminSerializer
+    VenueAdminSerializer,
+    NotificationSerializer,
+    NotificationCreateSerializer
 )
 from accounts.permissions import CanBookVenue, IsSuperAdmin
 from venue_management.models import Venue
+from utils.email_utils import (
+    send_booking_confirmation_email,
+    send_booking_cancellation_email,
+    send_hall_admin_booking_notification
+)
+from utils.notification_utils import (
+    notify_booking_confirmed,
+    notify_booking_cancelled,
+    notify_hall_admin_new_booking,
+    get_unread_count,
+    mark_all_as_read
+)
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class BookingViewSet(viewsets.ModelViewSet):
@@ -23,6 +40,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     ViewSet for Booking CRUD operations
     """
     queryset = Booking.objects.all()
+    pagination_class = None  # Disable pagination
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -66,8 +84,31 @@ class BookingViewSet(viewsets.ModelViewSet):
             return Booking.objects.filter(user=user)
     
     def perform_create(self, serializer):
-        """Set the user to the current authenticated user"""
-        serializer.save(user=self.request.user)
+        """Set the user to the current authenticated user and send notification emails"""
+        booking = serializer.save(user=self.request.user)
+        
+        # Send confirmation email to user
+        try:
+            send_booking_confirmation_email(booking)
+            logger.info(f"Booking confirmation email sent to {booking.user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send booking confirmation email: {str(e)}")
+        
+        # Create in-app notification for user
+        try:
+            notify_booking_confirmed(booking)
+        except Exception as e:
+            logger.error(f"Failed to create booking confirmation notification: {str(e)}")
+        
+        # Send notification to Hall Admin if venue has assigned admin
+        try:
+            venue_admins = VenueAdmin.objects.filter(venue=booking.venue)
+            for venue_admin in venue_admins:
+                send_hall_admin_booking_notification(booking, venue_admin.user)
+                notify_hall_admin_new_booking(booking, venue_admin.user)
+                logger.info(f"Hall admin notification sent to {venue_admin.user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send hall admin notification: {str(e)}")
     
     @action(detail=False, methods=['get'])
     def my_bookings(self, request):
@@ -76,7 +117,8 @@ class BookingViewSet(viewsets.ModelViewSet):
         - Hall Admin: Bookings for assigned venues
         - HOD/Dean/Others: Their own bookings
         """
-        bookings = self.get_queryset()
+        bookings = self.get_queryset().order_by('-created_at')
+        logger.info(f"User: {request.user.email}, Role: {request.user.role}, Bookings count: {bookings.count()}")
         serializer = BookingListSerializer(bookings, many=True)
         return Response(serializer.data)
     
@@ -146,6 +188,22 @@ class BookingViewSet(viewsets.ModelViewSet):
             if serializer.is_valid():
                 serializer.save()
                 print(f"Booking {booking.id} cancelled successfully")
+                
+                # Send cancellation email to booking owner
+                try:
+                    cancelled_by = user if user != booking.user else None
+                    send_booking_cancellation_email(booking, cancelled_by)
+                    logger.info(f"Cancellation email sent to {booking.user.email}")
+                except Exception as e:
+                    logger.error(f"Failed to send cancellation email: {str(e)}")
+                
+                # Create in-app notification for booking owner
+                try:
+                    cancelled_by = user if user != booking.user else None
+                    notify_booking_cancelled(booking, cancelled_by)
+                except Exception as e:
+                    logger.error(f"Failed to create cancellation notification: {str(e)}")
+                
                 return Response({
                     'message': 'Booking cancelled successfully',
                     'booking': BookingSerializer(booking).data
@@ -300,3 +358,63 @@ class VenueAdminViewSet(viewsets.ModelViewSet):
         
         serializer = VenueSerializer(venues, many=True)
         return Response(serializer.data)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Notification CRUD operations
+    Users can only see their own notifications
+    """
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None  # Disable pagination for notifications
+    
+    def get_queryset(self):
+        """Return only the current user's notifications, ordered by newest first"""
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return NotificationCreateSerializer
+        return NotificationSerializer
+    
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        """Get count of unread notifications"""
+        count = get_unread_count(request.user)
+        return Response({'unread_count': count})
+    
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        """Mark a notification as read"""
+        notification = self.get_object()
+        notification.mark_as_read()
+        return Response({
+            'message': 'Notification marked as read',
+            'notification': NotificationSerializer(notification).data
+        })
+    
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        """Mark all notifications as read"""
+        updated = mark_all_as_read(request.user)
+        return Response({
+            'message': f'{updated} notification(s) marked as read',
+            'updated_count': updated
+        })
+    
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        """Get recent notifications (last 10)"""
+        notifications = self.get_queryset()[:10]
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['delete'])
+    def clear_all(self, request):
+        """Delete all read notifications"""
+        deleted_count = self.get_queryset().filter(is_read=True).delete()[0]
+        return Response({
+            'message': f'{deleted_count} notification(s) deleted',
+            'deleted_count': deleted_count
+        })

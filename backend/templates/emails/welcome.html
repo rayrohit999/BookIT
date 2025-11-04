@@ -1,0 +1,68 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Welcome to BookIT{% endblock %}
+
+{% block content %}
+<h2>Welcome to BookIT! 🎉</h2>
+
+<p>Dear {{ user.get_full_name }},</p>
+
+<p>Your account has been successfully created on BookIT - the Venue Booking System for PCCOE. We're excited to have you on board!</p>
+
+<div class="alert alert-info">
+    <strong>📧 Your Account Details:</strong>
+</div>
+
+<table class="details-table">
+    <tr>
+        <td>Email Address</td>
+        <td><strong>{{ user.email }}</strong></td>
+    </tr>
+    <tr>
+        <td>Temporary Password</td>
+        <td><strong style="color: #1976d2; font-size: 18px;">{{ password }}</strong></td>
+    </tr>
+    <tr>
+        <td>Role</td>
+        <td>{{ user.get_role_display }}</td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <h3>🔐 Security Notice</h3>
+    <p><strong>Important:</strong> This is a temporary password generated for your first login. For security reasons, please change your password immediately after logging in.</p>
+</div>
+
+<div style="text-align: center;">
+    <a href="{{ login_url }}" class="btn">Login to BookIT</a>
+</div>
+
+<div class="divider"></div>
+
+<h3 style="color: #1976d2;">Getting Started:</h3>
+<p>Here's what you can do with BookIT:</p>
+<ul style="color: #555555; line-height: 1.8;">
+    <li>📅 Browse and book available venues for your events</li>
+    <li>📋 View and manage your bookings</li>
+    <li>🔔 Receive notifications about your bookings</li>
+    {% if user.role == 'hall_admin' %}
+    <li>🏢 Manage your assigned venues</li>
+    <li>📊 View bookings for your venues</li>
+    {% elif user.role == 'admin' %}
+    <li>👥 Manage users and venues</li>
+    <li>📊 View system-wide statistics</li>
+    {% endif %}
+</ul>
+
+<div class="alert alert-warning">
+    <strong>⚠️ Remember:</strong> Keep your login credentials secure and do not share them with anyone.
+</div>
+
+<p>If you have any questions or need assistance, please contact the system administrator.</p>
+
+<p style="margin-top: 30px;">
+    Best regards,<br>
+    <strong>BookIT Team</strong><br>
+    PCCOE
+</p>
+{% endblock %}

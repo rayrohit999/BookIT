@@ -1,0 +1,100 @@
+{% extends "emails/base.html" %}
+
+{% block title %}New Booking - BookIT{% endblock %}
+
+{% block content %}
+<h2>New Booking Received! 📅</h2>
+
+<p>Dear {{ hall_admin.get_full_name }},</p>
+
+<p>A new booking has been made for <strong>{{ booking.venue.name }}</strong>, which is assigned to you. Please review the details below:</p>
+
+<div class="alert alert-info">
+    <strong>🆕 New Booking ID:</strong> #{{ booking.id }}
+</div>
+
+<table class="details-table">
+    <tr>
+        <td>Event Name</td>
+        <td><strong>{{ booking.event_name }}</strong></td>
+    </tr>
+    <tr>
+        <td>Venue</td>
+        <td><strong>{{ booking.venue.name }}</strong></td>
+    </tr>
+    <tr>
+        <td>Date</td>
+        <td><strong>{{ booking.date|date:"F j, Y" }} ({{ booking.date|date:"l" }})</strong></td>
+    </tr>
+    <tr>
+        <td>Time</td>
+        <td><strong>{{ booking.start_time|time:"g:i A" }} - {{ booking.end_time|time:"g:i A" }}</strong></td>
+    </tr>
+    <tr>
+        <td>Expected Attendees</td>
+        <td>{{ booking.expected_attendees }} people</td>
+    </tr>
+    {% if booking.event_description %}
+    <tr>
+        <td>Event Description</td>
+        <td>{{ booking.event_description }}</td>
+    </tr>
+    {% endif %}
+</table>
+
+<div class="info-box">
+    <h3>👤 Requester Information</h3>
+    <table class="details-table" style="margin: 0;">
+        <tr>
+            <td style="border: none;">Name</td>
+            <td style="border: none;"><strong>{{ booking.user.get_full_name }}</strong></td>
+        </tr>
+        <tr>
+            <td style="border: none;">Email</td>
+            <td style="border: none;">{{ booking.user.email }}</td>
+        </tr>
+        <tr>
+            <td style="border: none;">Phone</td>
+            <td style="border: none;">{{ booking.contact_number }}</td>
+        </tr>
+        <tr>
+            <td style="border: none;">Department</td>
+            <td style="border: none;">{{ booking.user.department|default:"Not specified" }}</td>
+        </tr>
+    </table>
+</div>
+
+{% if booking.special_requirements %}
+<div class="alert alert-warning">
+    <strong>⚠️ Special Requirements:</strong><br>
+    {{ booking.special_requirements }}
+</div>
+{% endif %}
+
+<div class="info-box">
+    <h3>📋 Your Responsibilities</h3>
+    <ul style="margin: 10px 0; padding-left: 20px;">
+        <li>Ensure the venue is ready before the booking time</li>
+        <li>Check if any special requirements can be accommodated</li>
+        <li>Monitor the venue during the event if necessary</li>
+        <li>You can cancel the booking if there are any issues</li>
+    </ul>
+</div>
+
+<div style="text-align: center;">
+    <a href="http://localhost:3000/hall-admin/bookings" class="btn btn-success">View All Bookings</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #666666; font-size: 14px;">
+    <strong>Booking Created:</strong> {{ booking.created_at|date:"F j, Y g:i A" }}<br>
+    <strong>Status:</strong> <span style="color: #4caf50;">{{ booking.status|upper }}</span>
+</p>
+
+<p style="margin-top: 30px;">
+    Thank you for managing {{ booking.venue.name }}!<br>
+    <strong>BookIT Team</strong><br>
+    PCCOE
+</p>
+{% endblock %}

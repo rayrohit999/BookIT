@@ -13,6 +13,12 @@ from .serializers import (
     UserDetailSerializer
 )
 from .permissions import IsSuperAdmin
+from utils.password_utils import generate_random_password
+from utils.email_utils import send_welcome_email
+from utils.notification_utils import notify_user_created
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -37,6 +43,46 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action == 'change_password':
             return [IsAuthenticated()]
         return [IsAuthenticated()]
+    
+    def create(self, request, *args, **kwargs):
+        """Create new user with random password and send welcome email"""
+        try:
+            # Generate random password
+            random_password = generate_random_password()
+            
+            # Add password to request data
+            request.data['password'] = random_password
+            
+            # Create user using serializer
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            
+            # Send welcome email
+            try:
+                send_welcome_email(user, random_password)
+                logger.info(f"Welcome email sent to {user.email}")
+            except Exception as e:
+                logger.error(f"Failed to send welcome email to {user.email}: {str(e)}")
+                # Don't fail user creation if email fails
+            
+            # Create in-app notification
+            try:
+                notify_user_created(user, request.user)
+            except Exception as e:
+                logger.error(f"Failed to create welcome notification: {str(e)}")
+            
+            return Response({
+                'message': 'User created successfully. Welcome email sent.',
+                'user': UserDetailSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"Failed to create user: {str(e)}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @action(detail=False, methods=['get'])
     def me(self, request):

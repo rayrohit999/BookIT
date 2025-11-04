@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BookIT Notification{% endblock %}</title>
+    <style>
+        /* Reset styles */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        /* Container */
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Header */
+        .email-header {
+            background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .email-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        
+        .email-header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* Content */
+        .email-content {
+            padding: 40px 30px;
+            color: #333333;
+        }
+        
+        .email-content h2 {
+            color: #1976d2;
+            font-size: 22px;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        
+        .email-content p {
+            margin: 15px 0;
+            font-size: 16px;
+            color: #555555;
+        }
+        
+        /* Info box */
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #1976d2;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .info-box h3 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+            font-size: 18px;
+        }
+        
+        .info-box p {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+        
+        .info-box strong {
+            color: #333333;
+            font-weight: 600;
+        }
+        
+        /* Table styling */
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .details-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .details-table td:first-child {
+            font-weight: 600;
+            color: #555555;
+            width: 40%;
+        }
+        
+        .details-table td:last-child {
+            color: #333333;
+        }
+        
+        /* Button */
+        .btn {
+            display: inline-block;
+            padding: 14px 32px;
+            margin: 20px 0;
+            background-color: #1976d2;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #1565c0;
+        }
+        
+        .btn-success {
+            background-color: #4caf50;
+        }
+        
+        .btn-success:hover {
+            background-color: #45a049;
+        }
+        
+        .btn-danger {
+            background-color: #f44336;
+        }
+        
+        .btn-danger:hover {
+            background-color: #da190b;
+        }
+        
+        /* Alert boxes */
+        .alert {
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-size: 15px;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .alert-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #f44336;
+        }
+        
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #1976d2;
+        }
+        
+        /* Footer */
+        .email-footer {
+            background-color: #f8f9fa;
+            padding: 25px 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .email-footer p {
+            margin: 8px 0;
+            font-size: 14px;
+            color: #666666;
+        }
+        
+        .email-footer a {
+            color: #1976d2;
+            text-decoration: none;
+        }
+        
+        .email-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Divider */
+        .divider {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 25px 0;
+        }
+        
+        /* Responsive */
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+            }
+            
+            .email-content {
+                padding: 30px 20px;
+            }
+            
+            .email-header h1 {
+                font-size: 24px;
+            }
+            
+            .btn {
+                display: block;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="email-header">
+            <h1>📚 BookIT</h1>
+            <p>Venue Booking System - PCCOE</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="email-content">
+            {% block content %}
+            <!-- Email content goes here -->
+            {% endblock %}
+        </div>
+        
+        <!-- Footer -->
+        <div class="email-footer">
+            <p><strong>BookIT - Venue Booking System</strong></p>
+            <p>Pimpri Chinchwad College of Engineering (PCCOE)</p>
+            <div class="divider" style="margin: 15px auto; width: 80%;"></div>
+            <p style="font-size: 12px; color: #999999;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, please contact your system administrator.
+            </p>
+            <p style="font-size: 12px; color: #999999;">
+                © 2025 BookIT. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

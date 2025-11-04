@@ -2,6 +2,7 @@ import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box, Container } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const Layout = ({ children }) => {
   const { user, logout, isSuperAdmin, isHallAdmin } = useAuth();
@@ -58,6 +59,7 @@ const Layout = ({ children }) => {
                   Hall Admin
                 </Button>
               )}
+              <NotificationBell />
               <Button color="inherit" component={Link} to="/profile">
                 Profile
               </Button>

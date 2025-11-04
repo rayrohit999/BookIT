@@ -68,7 +68,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -203,3 +203,23 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+
+# Email Configuration
+# https://docs.djangoproject.com/en/4.2/topics/email/
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'carrerhub.com@gmail.com'
+EMAIL_HOST_PASSWORD = 'naso cwzk vvrf kvob'  # Gmail App Password
+DEFAULT_FROM_EMAIL = 'BookIT - PCCOE <carrerhub.com@gmail.com>'
+SERVER_EMAIL = 'carrerhub.com@gmail.com'
+
+# Email settings for better deliverability
+EMAIL_TIMEOUT = 10  # seconds
+EMAIL_USE_LOCALTIME = False
+
+# Frontend URL (for email links)
+FRONTEND_URL = 'http://localhost:3000'
