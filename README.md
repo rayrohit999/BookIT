@@ -62,45 +62,55 @@ System designed to easily add more venues.
 
 | Document | Description |
 |----------|-------------|
+| [SETUP_GUIDE.md](SETUP_GUIDE.md) | **⭐ First time?** Complete setup instructions |
+| [STARTUP_GUIDE.md](STARTUP_GUIDE.md) | **🚀 Start here daily!** How to start all servers |
 | [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) | Complete project details and problem statement |
 | [FEATURES.md](FEATURES.md) | Detailed feature list by user role |
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Database design and relationships |
 | [API_ENDPOINTS.md](API_ENDPOINTS.md) | Complete API documentation |
 | [DEVELOPMENT_PHASES.md](DEVELOPMENT_PHASES.md) | Phase-wise development roadmap |
 | [TECH_STACK.md](TECH_STACK.md) | Technology decisions and justifications |
-| [SETUP_GUIDE.md](SETUP_GUIDE.md) | **⭐ Start here!** Complete setup instructions |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Quick reference for daily development |
 
 ---
 
 ## 🚀 Quick Start
 
-**👉 For complete setup instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md)**
+### First Time Setup
+**👉 Follow [SETUP_GUIDE.md](SETUP_GUIDE.md) for complete installation**
 
-### Quick Setup (Summary)
+### Daily Development (Starting Servers)
 
-1. **Install Prerequisites**: Python 3.10+, Node.js 18+, Git
-2. **Backend Setup**:
-   ```bash
-   cd backend
-   python -m venv venv
-   .\venv\Scripts\Activate.ps1  # Windows PowerShell
-   pip install -r requirements.txt
-   python manage.py migrate
-   python manage.py createsuperuser
-   python manage.py runserver
-   ```
-3. **Frontend Setup** (in new terminal):
-   ```bash
-   cd frontend
-   npm install
-   npm start
-   ```
+**🎯 Automatic** (Recommended):
+```powershell
+# Run the startup script
+.\start-servers.ps1
+```
+Choose option 1 for full stack (with async emails) or option 2 for simple mode.
 
-Visit:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- Admin Panel: http://localhost:8000/admin
+**📖 Manual** (See [STARTUP_GUIDE.md](STARTUP_GUIDE.md)):
+```powershell
+# Terminal 1 - Redis (optional, for async emails)
+cd C:\Users\Lenovo\Downloads\redis-x64-5.0.14.1
+.\redis-server.exe
+
+# Terminal 2 - Django Backend
+cd backend
+.\venv\Scripts\python.exe manage.py runserver
+
+# Terminal 3 - Celery Worker (optional, for async emails)
+cd backend
+.\venv\Scripts\celery.exe -A config worker -l info --pool=solo
+
+# Terminal 4 - React Frontend
+cd frontend
+npm start
+```
+
+**Access Your App**:
+- 🌐 Frontend: http://localhost:3000
+- 🔧 Backend API: http://localhost:8000/api/
+- 👤 Admin Panel: http://localhost:8000/admin/
 
 ---
 

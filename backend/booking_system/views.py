@@ -19,9 +19,9 @@ from .serializers import (
 from accounts.permissions import CanBookVenue, IsSuperAdmin
 from venue_management.models import Venue
 from utils.email_utils import (
-    send_booking_confirmation_email,
-    send_booking_cancellation_email,
-    send_hall_admin_booking_notification
+    send_booking_confirmation_smart,
+    send_booking_cancellation_smart,
+    send_hall_admin_notification_smart
 )
 from utils.notification_utils import (
     notify_booking_confirmed,
@@ -87,14 +87,10 @@ class BookingViewSet(viewsets.ModelViewSet):
         """Set the user to the current authenticated user and send notification emails"""
         booking = serializer.save(user=self.request.user)
         
-        # Send confirmation email to user
-        try:
-            send_booking_confirmation_email(booking)
-            logger.info(f"Booking confirmation email sent to {booking.user.email}")
-        except Exception as e:
-            logger.error(f"Failed to send booking confirmation email: {str(e)}")
+        # Send confirmation email to user (async if Celery available, sync otherwise)
+        send_booking_confirmation_smart(booking)
         
-        # Create in-app notification for user
+        # Create in-app notification for user (fast, no async needed)
         try:
             notify_booking_confirmed(booking)
         except Exception as e:
@@ -104,9 +100,8 @@ class BookingViewSet(viewsets.ModelViewSet):
         try:
             venue_admins = VenueAdmin.objects.filter(venue=booking.venue)
             for venue_admin in venue_admins:
-                send_hall_admin_booking_notification(booking, venue_admin.user)
+                send_hall_admin_notification_smart(booking, venue_admin.user)
                 notify_hall_admin_new_booking(booking, venue_admin.user)
-                logger.info(f"Hall admin notification sent to {venue_admin.user.email}")
         except Exception as e:
             logger.error(f"Failed to send hall admin notification: {str(e)}")
     
@@ -189,17 +184,12 @@ class BookingViewSet(viewsets.ModelViewSet):
                 serializer.save()
                 print(f"Booking {booking.id} cancelled successfully")
                 
-                # Send cancellation email to booking owner
-                try:
-                    cancelled_by = user if user != booking.user else None
-                    send_booking_cancellation_email(booking, cancelled_by)
-                    logger.info(f"Cancellation email sent to {booking.user.email}")
-                except Exception as e:
-                    logger.error(f"Failed to send cancellation email: {str(e)}")
+                # Send cancellation email to booking owner (async if Celery available, sync otherwise)
+                cancelled_by = user if user != booking.user else None
+                send_booking_cancellation_smart(booking, cancelled_by)
                 
                 # Create in-app notification for booking owner
                 try:
-                    cancelled_by = user if user != booking.user else None
                     notify_booking_cancelled(booking, cancelled_by)
                 except Exception as e:
                     logger.error(f"Failed to create cancellation notification: {str(e)}")

@@ -223,3 +223,19 @@ EMAIL_USE_LOCALTIME = False
 
 # Frontend URL (for email links)
 FRONTEND_URL = 'http://localhost:3000'
+
+
+# Celery Configuration
+# https://docs.celeryproject.org/en/stable/django/first-steps-with-django.html
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Redis as message broker
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # Store task results in Redis
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE  # Use Django's timezone setting
+CELERY_TASK_TRACK_STARTED = True  # Track when tasks start
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # Soft limit at 25 minutes
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # One task at a time
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Restart worker after 1000 tasks

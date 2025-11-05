@@ -14,7 +14,7 @@ from .serializers import (
 )
 from .permissions import IsSuperAdmin
 from utils.password_utils import generate_random_password
-from utils.email_utils import send_welcome_email
+from utils.email_utils import send_welcome_email_smart
 from utils.notification_utils import notify_user_created
 import logging
 
@@ -58,13 +58,8 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
             
-            # Send welcome email
-            try:
-                send_welcome_email(user, random_password)
-                logger.info(f"Welcome email sent to {user.email}")
-            except Exception as e:
-                logger.error(f"Failed to send welcome email to {user.email}: {str(e)}")
-                # Don't fail user creation if email fails
+            # Send welcome email (async if Celery available, sync otherwise)
+            send_welcome_email_smart(user, random_password)
             
             # Create in-app notification
             try:
