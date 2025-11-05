@@ -502,10 +502,10 @@ class WaitlistViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Users can only see their own waitlist entries"""
+        from .models import Waitlist
         user = self.request.user
         if user.is_staff:
-            return Booking.objects.select_related('venue', 'user').all()
-        from .models import Waitlist
+            return Waitlist.objects.select_related('venue', 'user').all()
         return Waitlist.objects.filter(user=user).select_related('venue')
     
     def get_serializer_class(self):

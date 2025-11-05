@@ -17,6 +17,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { venueService, bookingService } from '../services';
 import { getTodayDate, getMaxBookingDate, validateTimeRange } from '../utils/dateUtils';
 import { handleApiError } from '../utils/helpers';
+import JoinWaitlistButton from '../components/JoinWaitlistButton';
 
 const CreateBookingPage = () => {
   const navigate = useNavigate();
@@ -314,19 +315,38 @@ const CreateBookingPage = () => {
                       {availability.message}
                     </Alert>
                   ) : (
-                    <Alert severity="error">
-                      {availability.message}
-                      {availability.conflicts && availability.conflicts.length > 0 && (
-                        <Box sx={{ mt: 1 }}>
-                          <Typography variant="body2">Conflicting bookings:</Typography>
-                          {availability.conflicts.map((conflict, index) => (
-                            <Typography key={index} variant="caption" display="block">
-                              • {conflict.start_time} - {conflict.end_time}: {conflict.purpose}
-                            </Typography>
-                          ))}
-                        </Box>
-                      )}
-                    </Alert>
+                    <>
+                      <Alert severity="error">
+                        {availability.message}
+                        {availability.conflicts && availability.conflicts.length > 0 && (
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2">Conflicting bookings:</Typography>
+                            {availability.conflicts.map((conflict, index) => (
+                              <Typography key={index} variant="caption" display="block">
+                                • {conflict.start_time} - {conflict.end_time}: {conflict.purpose}
+                              </Typography>
+                            ))}
+                          </Box>
+                        )}
+                      </Alert>
+                      <Box sx={{ mt: 2 }}>
+                        <JoinWaitlistButton
+                          venue={selectedVenue}
+                          date={formData.date}
+                          startTime={formData.start_time}
+                          endTime={formData.end_time}
+                          onSuccess={() => {
+                            setSuccess(true);
+                            setTimeout(() => {
+                              navigate('/my-waitlist');
+                            }, 2000);
+                          }}
+                          onError={(error) => {
+                            setErrors({ general: error });
+                          }}
+                        />
+                      </Box>
+                    </>
                   )}
                 </Box>
               )}

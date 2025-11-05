@@ -60,7 +60,7 @@ const JoinWaitlistButton = ({ venue, date, startTime, endTime, onSuccess, onErro
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       
       // Format date for API (YYYY-MM-DD)
       let formattedDate;
@@ -72,13 +72,22 @@ const JoinWaitlistButton = ({ venue, date, startTime, endTime, onSuccess, onErro
         formattedDate = format(date, 'yyyy-MM-dd');
       }
 
+      // Format time to HH:MM:SS if only HH:MM is provided
+      const formatTimeWithSeconds = (time) => {
+        if (!time) return time;
+        // If already has seconds (HH:MM:SS), return as is
+        if (time.split(':').length === 3) return time;
+        // Add :00 seconds
+        return `${time}:00`;
+      };
+
       const response = await axios.post(
         `${API_BASE_URL}/waitlist/`,
         {
           venue: venue.id,
           date: formattedDate,
-          start_time: startTime,
-          end_time: endTime,
+          start_time: formatTimeWithSeconds(startTime),
+          end_time: formatTimeWithSeconds(endTime),
         },
         {
           headers: {
@@ -98,7 +107,22 @@ const JoinWaitlistButton = ({ venue, date, startTime, endTime, onSuccess, onErro
         setSuccess(false);
       }, 2000);
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Failed to join waitlist';
+      console.error('Waitlist join error:', err.response?.data);
+      let errorMsg = 'Failed to join waitlist';
+      
+      if (err.response?.data) {
+        // Handle Django validation errors
+        if (err.response.data.error) {
+          errorMsg = err.response.data.error;
+        } else if (err.response.data.non_field_errors) {
+          errorMsg = err.response.data.non_field_errors[0];
+        } else if (typeof err.response.data === 'object') {
+          // Get first error from any field
+          const firstError = Object.values(err.response.data)[0];
+          errorMsg = Array.isArray(firstError) ? firstError[0] : firstError;
+        }
+      }
+      
       setError(errorMsg);
       if (onError) {
         onError(errorMsg);

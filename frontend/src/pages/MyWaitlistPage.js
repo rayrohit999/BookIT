@@ -45,7 +45,7 @@ const MyWaitlistPage = () => {
   const fetchWaitlist = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       const response = await axios.get(`${API_BASE_URL}/waitlist/my_waitlist/`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -73,7 +73,7 @@ const MyWaitlistPage = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       await axios.delete(`${API_BASE_URL}/waitlist/${entryId}/leave/`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -96,7 +96,7 @@ const MyWaitlistPage = () => {
 
     setClaiming(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       const response = await axios.post(
         `${API_BASE_URL}/waitlist/${selectedEntry.id}/claim/`,
         {},

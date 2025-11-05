@@ -53,7 +53,7 @@ const ConfirmBookingButton = ({ booking, onSuccess, variant = 'contained', size 
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       await axios.post(
         `${API_BASE_URL}/bookings/${booking.id}/confirm/`,
         {},
