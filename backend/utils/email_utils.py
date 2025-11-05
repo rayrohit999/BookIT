@@ -465,3 +465,113 @@ def send_hall_admin_notification_smart(booking, hall_admin):
             send_hall_admin_booking_notification(booking, hall_admin)
         except Exception as sync_e:
             logger.error(f"Fallback sync email also failed: {str(sync_e)}")
+
+
+# ============================
+# AUTO-CANCEL & WAITLIST EMAILS
+# ============================
+
+def send_booking_reminder_email(booking):
+    """Send 24-hour reminder email for booking"""
+    try:
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        
+        context = {
+            'user_name': booking.user.get_full_name(),
+            'venue_name': booking.venue.name,
+            'booking_date': booking.date.strftime('%B %d, %Y'),
+            'start_time': booking.start_time.strftime('%I:%M %p'),
+            'end_time': booking.end_time.strftime('%I:%M %p'),
+            'event_name': booking.event_name,
+            'confirm_url': f"{frontend_url}/bookings/{booking.id}/confirm",
+            'cancel_url': f"{frontend_url}/bookings/{booking.id}/cancel",
+        }
+        
+        html_content = render_to_string('emails/booking_reminder.html', context)
+        
+        from django.core.mail import send_mail
+        send_mail(
+            subject=f'Reminder: Your booking at {booking.venue.name}',
+            message='',  # Plain text version
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[booking.user.email],
+            html_message=html_content,
+            fail_silently=False,
+        )
+        
+        logger.info(f"Reminder email sent to {booking.user.email} for booking {booking.id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send reminder email for booking {booking.id}: {e}")
+        return False
+
+
+def send_auto_cancel_email(booking, reason="Not confirmed in time"):
+    """Send email when booking is auto-cancelled"""
+    try:
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        
+        context = {
+            'user_name': booking.user.get_full_name(),
+            'venue_name': booking.venue.name,
+            'booking_date': booking.date.strftime('%B %d, %Y'),
+            'start_time': booking.start_time.strftime('%I:%M %p'),
+            'end_time': booking.end_time.strftime('%I:%M %p'),
+            'event_name': booking.event_name,
+            'cancel_reason': reason,
+            'booking_url': f"{frontend_url}/venues",
+        }
+        
+        html_content = render_to_string('emails/booking_auto_cancelled.html', context)
+        
+        from django.core.mail import send_mail
+        send_mail(
+            subject=f'Booking Auto-Cancelled: {booking.venue.name}',
+            message='',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[booking.user.email],
+            html_message=html_content,
+            fail_silently=False,
+        )
+        
+        logger.info(f"Auto-cancel email sent to {booking.user.email} for booking {booking.id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send auto-cancel email for booking {booking.id}: {e}")
+        return False
+
+
+def send_waitlist_notification_email(waitlist_entry):
+    """Send email when waitlist slot becomes available"""
+    try:
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        
+        context = {
+            'user_name': waitlist_entry.user.get_full_name(),
+            'venue_name': waitlist_entry.venue.name,
+            'booking_date': waitlist_entry.date.strftime('%B %d, %Y'),
+            'start_time': waitlist_entry.start_time.strftime('%I:%M %p'),
+            'end_time': waitlist_entry.end_time.strftime('%I:%M %p'),
+            'claim_url': f"{frontend_url}/waitlist/{waitlist_entry.id}/claim",
+        }
+        
+        html_content = render_to_string('emails/waitlist_slot_available.html', context)
+        
+        from django.core.mail import send_mail
+        send_mail(
+            subject=f'🎉 Venue Available: {waitlist_entry.venue.name}',
+            message='',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[waitlist_entry.user.email],
+            html_message=html_content,
+            fail_silently=False,
+        )
+        
+        logger.info(f"Waitlist notification sent to {waitlist_entry.user.email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send waitlist notification for entry {waitlist_entry.id}: {e}")
+        return False

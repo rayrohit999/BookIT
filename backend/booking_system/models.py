@@ -81,6 +81,44 @@ class Booking(models.Model):
         help_text="Cancellation timestamp"
     )
     
+    # Reminder System Fields (Auto-Cancel & Waitlist Feature)
+    reminder_sent = models.BooleanField(
+        default=False,
+        help_text="Whether 24-hour reminder has been sent"
+    )
+    reminder_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when reminder was sent"
+    )
+    
+    # Confirmation System Fields
+    confirmed = models.BooleanField(
+        default=False,
+        help_text="Whether user has confirmed the booking"
+    )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when booking was confirmed"
+    )
+    
+    # Auto-Cancellation Fields
+    auto_cancelled = models.BooleanField(
+        default=False,
+        help_text="Whether booking was auto-cancelled by system"
+    )
+    auto_cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when auto-cancelled"
+    )
+    auto_cancel_reason = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Reason for auto-cancellation"
+    )
+    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -102,6 +140,10 @@ class Booking(models.Model):
             models.Index(fields=['user']),
             models.Index(fields=['status']),
             models.Index(fields=['date']),
+            # Indexes for auto-cancel & waitlist feature
+            models.Index(fields=['date', 'status', 'reminder_sent']),
+            models.Index(fields=['date', 'start_time', 'confirmed']),
+            models.Index(fields=['venue', 'date', 'status']),
         ]
 
     def __str__(self):
@@ -225,6 +267,100 @@ class VenueAdmin(models.Model):
         """Validate venue admin assignment"""
         if self.user and self.user.role != 'hall_admin':
             raise ValidationError('Only users with hall_admin role can be assigned as venue administrators')
+
+
+class Waitlist(models.Model):
+    """
+    Waitlist entries for fully booked time slots.
+    Users are notified when a slot becomes available.
+    """
+    
+    # Booking Details
+    venue = models.ForeignKey(
+        'venue_management.Venue',
+        on_delete=models.CASCADE,
+        related_name='waitlist_entries',
+        help_text="Venue for waitlist"
+    )
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='waitlist_entries',
+        help_text="User waiting for this slot"
+    )
+    date = models.DateField(help_text="Requested booking date")
+    start_time = models.TimeField(help_text="Requested start time")
+    end_time = models.TimeField(help_text="Requested end time")
+    
+    # Metadata
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When user joined waitlist"
+    )
+    
+    # Notification Status
+    notified = models.BooleanField(
+        default=False,
+        help_text="Whether user has been notified of available slot"
+    )
+    notified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When user was notified"
+    )
+    
+    # Claim Status
+    claimed = models.BooleanField(
+        default=False,
+        help_text="Whether user claimed the slot"
+    )
+    claimed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When slot was claimed"
+    )
+    expired = models.BooleanField(
+        default=False,
+        help_text="Whether notification expired (15-min window passed)"
+    )
+    
+    # Priority (for future enhancements)
+    priority = models.IntegerField(
+        default=0,
+        help_text="Lower number = higher priority (0 = normal)"
+    )
+    
+    class Meta:
+        db_table = 'waitlist'
+        verbose_name = 'Waitlist Entry'
+        verbose_name_plural = 'Waitlist Entries'
+        ordering = ['priority', 'created_at']  # FIFO with priority
+        indexes = [
+            models.Index(fields=['venue', 'date', 'start_time']),
+            models.Index(fields=['user', 'claimed', 'expired']),
+            models.Index(fields=['notified', 'expired', 'claimed']),
+            models.Index(fields=['priority', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.venue.name} on {self.date}"
+    
+    def is_expired(self):
+        """Check if notification has expired (15 minutes passed)"""
+        if not self.notified_at:
+            return False
+        from datetime import timedelta
+        expiry_time = self.notified_at + timedelta(minutes=15)
+        return timezone.now() > expiry_time
+    
+    def time_remaining(self):
+        """Get seconds remaining to claim slot"""
+        if not self.notified_at or self.expired:
+            return 0
+        from datetime import timedelta
+        expiry_time = self.notified_at + timedelta(minutes=15)
+        remaining = (expiry_time - timezone.now()).total_seconds()
+        return max(0, int(remaining))
 
 
 # Import Notification model from separate file to keep models organized

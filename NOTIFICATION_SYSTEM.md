@@ -1016,6 +1016,364 @@ Potential improvements for future versions:
 
 ---
 
+---
+
+## 🚫 Auto-Cancellation System
+
+### Overview
+
+Automatic booking cancellation prevents "ghost bookings" where users forget to cancel but don't attend events.
+
+### Flow
+
+```
+Booking Created
+      │
+      ▼
+   24 Hours Before Event
+      │
+      ├─── Send Reminder Email
+      │    (with Confirm/Cancel buttons)
+      │
+      ▼
+   22 Hours Before Event
+      │
+      ├─── Check if confirmed?
+      │         │
+      │         ├─ YES → Keep booking
+      │         │
+      │         └─ NO (2h before) → Auto-cancel
+      │                              │
+      │                              ├─ Send cancellation email
+      │                              ├─ Update booking status
+      │                              └─ Notify waitlist users
+```
+
+### Email Templates
+
+#### 1. Booking Reminder (24h before)
+- **Template**: `emails/booking_reminder.html`
+- **Trigger**: 24 hours before event
+- **Actions**: Confirm Button, Cancel Button
+- **Contains**: Venue, date, time, event details
+
+#### 2. Auto-Cancellation Notice
+- **Template**: `emails/booking_auto_cancelled.html`
+- **Trigger**: 2 hours before event (if not confirmed)
+- **Contains**: Cancellation reason, rebook link, prevention tips
+
+### Celery Tasks
+
+#### `send_booking_reminders`
+- **Schedule**: Every hour (crontab minute=0)
+- **Logic**: Finds bookings 24 hours ahead without reminders sent
+- **Action**: Sends reminder email, marks `reminder_sent=True`
+
+#### `auto_cancel_unconfirmed_bookings`
+- **Schedule**: Every 30 minutes (crontab minute='*/30')
+- **Logic**: Finds bookings 2 hours ahead, reminder sent, not confirmed
+- **Action**: Cancels booking, sends email, triggers waitlist notification
+
+### API Endpoints
+
+#### Confirm Booking
+```http
+POST /api/bookings/{id}/confirm/
+Authorization: Bearer <token>
+```
+
+**Response (200)**:
+```json
+{
+  "message": "Booking confirmed successfully!",
+  "confirmed_at": "2025-11-05T10:30:00Z"
+}
+```
+
+#### Override Auto-Cancel (Admin Only)
+```http
+POST /api/bookings/{id}/override_autocancel/
+Authorization: Bearer <token>
+```
+
+**Response (200)**:
+```json
+{
+  "message": "Auto-cancel overridden. Booking confirmed."
+}
+```
+
+### Database Fields
+
+**Booking Model**:
+```python
+reminder_sent = models.BooleanField(default=False)
+reminder_sent_at = models.DateTimeField(null=True, blank=True)
+confirmed = models.BooleanField(default=False)
+confirmed_at = models.DateTimeField(null=True, blank=True)
+auto_cancelled = models.BooleanField(default=False)
+auto_cancelled_at = models.DateTimeField(null=True, blank=True)
+auto_cancel_reason = models.TextField(null=True, blank=True)
+```
+
+---
+
+## 📋 Waitlist System
+
+### Overview
+
+When a booking slot is full, users can join a waitlist. When the slot becomes available (cancellation/auto-cancel), users are notified in FIFO order with a 15-minute claim window.
+
+### Flow
+
+```
+Slot Full → User Joins Waitlist
+                  │
+                  ▼
+           Stored with priority
+                  │
+                  ▼
+     Booking gets cancelled/auto-cancelled
+                  │
+                  ├─── Get next in queue (FIFO)
+                  │
+                  ▼
+          Notify first person (Email + In-App)
+                  │
+                  ├─── 15-minute claim window starts
+                  │
+                  ▼
+        ┌─────────┴─────────┐
+        │                   │
+        ▼                   ▼
+    User Claims        Window Expires
+        │                   │
+        ├─ Create booking   ├─ Mark expired
+        ├─ Send confirmation│ Notify next person
+        └─ Mark claimed     └─ Repeat cycle
+```
+
+### Waitlist Model
+
+```python
+class Waitlist(models.Model):
+    user = ForeignKey(User)
+    venue = ForeignKey(Venue)
+    date = DateField()
+    start_time = TimeField()
+    end_time = TimeField()
+    
+    # Notification tracking
+    notified = BooleanField(default=False)
+    notified_at = DateTimeField(null=True)
+    
+    # Claim tracking
+    claimed = BooleanField(default=False)
+    claimed_at = DateTimeField(null=True)
+    expired = BooleanField(default=False)
+    
+    # Queue management
+    priority = IntegerField(default=0)  # FIFO - lower is first
+    created_at = DateTimeField(auto_now_add=True)
+```
+
+### Email Template
+
+#### Waitlist Slot Available
+- **Template**: `emails/waitlist_slot_available.html`
+- **Trigger**: When slot becomes available
+- **Actions**: Claim Slot Button (15-minute countdown)
+- **Contains**: Venue, date, time, expiration time, urgency messaging
+
+### API Endpoints
+
+#### List Waitlist Entries
+```http
+GET /api/waitlist/
+Authorization: Bearer <token>
+```
+
+**Response (200)**:
+```json
+[
+  {
+    "id": 1,
+    "venue_name": "LRDC Hall",
+    "date": "2025-11-10",
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "notified": true,
+    "notified_at": "2025-11-05T10:00:00Z",
+    "time_remaining": "00:12:30",
+    "is_expired": false
+  }
+]
+```
+
+#### Join Waitlist
+```http
+POST /api/waitlist/
+Authorization: Bearer <token>
+
+{
+  "venue": 1,
+  "date": "2025-11-10",
+  "start_time": "10:00:00",
+  "end_time": "12:00:00"
+}
+```
+
+**Response (201)**:
+```json
+{
+  "id": 5,
+  "message": "Successfully joined waitlist",
+  "priority": 3
+}
+```
+
+**Validation**:
+- ❌ Already have a booking for this slot
+- ❌ Already on waitlist for this slot
+- ❌ Max 3 waitlist entries per day reached
+- ❌ Cannot join waitlist for past dates
+
+#### Get My Active Waitlist
+```http
+GET /api/waitlist/my_waitlist/
+Authorization: Bearer <token>
+```
+
+**Response (200)**:
+```json
+[
+  {
+    "id": 5,
+    "venue_name": "LRDC Hall",
+    "date": "2025-11-10",
+    "notified": false,
+    "priority": 2,
+    "users_ahead": 1
+  }
+]
+```
+
+#### Claim Slot
+```http
+POST /api/waitlist/{id}/claim/
+Authorization: Bearer <token>
+```
+
+**Response (201)**:
+```json
+{
+  "message": "Slot claimed successfully!",
+  "booking_id": 42
+}
+```
+
+**Errors**:
+- **403**: Not your waitlist entry
+- **400**: Notification expired (> 15 minutes)
+- **409**: Slot already booked by someone else
+
+#### Leave Waitlist
+```http
+DELETE /api/waitlist/{id}/leave/
+Authorization: Bearer <token>
+```
+
+**Response (200)**:
+```json
+{
+  "message": "Successfully left the waitlist"
+}
+```
+
+#### Check and Join (Convenience Endpoint)
+```http
+POST /api/waitlist/check_and_join/
+Authorization: Bearer <token>
+
+{
+  "venue": 1,
+  "date": "2025-11-10",
+  "start_time": "10:00:00",
+  "end_time": "12:00:00"
+}
+```
+
+**Response (200/201)**:
+```json
+{
+  "slot_available": false,
+  "joined_waitlist": true,
+  "waitlist_id": 5,
+  "priority": 2
+}
+```
+
+or
+
+```json
+{
+  "slot_available": true,
+  "message": "Slot is available, you can book directly"
+}
+```
+
+### Celery Tasks
+
+#### `notify_waitlist_users`
+- **Trigger**: On-demand (when booking cancelled)
+- **Logic**: Gets first person in queue (FIFO), sends notification
+- **Action**: Email + in-app notification, marks `notified=True`
+
+#### `expire_old_waitlist_notifications`
+- **Schedule**: Every 5 minutes (crontab minute='*/5')
+- **Logic**: Finds notifications older than 15 minutes
+- **Action**: Marks expired, notifies next person in queue
+
+### Validation Rules
+
+1. **Max Entries**: 3 waitlist entries per user per day
+2. **No Duplicates**: Cannot join if already on waitlist for same slot
+3. **No Active Bookings**: Cannot join if have confirmed booking for same slot
+4. **Valid Dates**: Cannot join waitlist for past dates/times
+5. **Claim Window**: 15 minutes to claim after notification
+6. **Transaction Safety**: Slot claiming uses atomic transactions
+
+### Business Logic
+
+**Priority (FIFO)**:
+```python
+# Auto-incrementing priority field ensures FIFO
+priority = Waitlist.objects.filter(
+    venue=venue, date=date, start_time=start, end_time=end
+).count()
+```
+
+**Expiration Check**:
+```python
+def is_expired(self):
+    if not self.notified_at:
+        return False
+    elapsed = timezone.now() - self.notified_at
+    return elapsed.total_seconds() > 15 * 60  # 15 minutes
+```
+
+**Claim Window**:
+```python
+def time_remaining(self):
+    if not self.notified_at:
+        return None
+    elapsed = timezone.now() - self.notified_at
+    remaining = timedelta(minutes=15) - elapsed
+    return max(remaining, timedelta(0))
+```
+
+---
+
 ## ✅ Completion Status
 
 | Phase | Status | Date Completed |
@@ -1026,11 +1384,13 @@ Potential improvements for future versions:
 | Phase 4: In-App Notifications | ✅ Complete | Nov 4, 2025 |
 | Phase 5: Testing & Documentation | ✅ Complete | Nov 5, 2025 |
 | **Async Email System (Bonus)** | ✅ Complete | Nov 5, 2025 |
+| **Auto-Cancellation System** | ✅ Complete | Nov 5, 2025 |
+| **Waitlist System** | ✅ Complete | Nov 5, 2025 |
 
 **System Status**: 🟢 Production Ready
 
 ---
 
-**Documentation Version**: 1.0  
+**Documentation Version**: 2.0  
 **Last Updated**: November 5, 2025  
 **Maintained By**: BookIT Development Team

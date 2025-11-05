@@ -239,3 +239,43 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # Soft limit at 25 minutes
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # One task at a time
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Restart worker after 1000 tasks
+
+
+# ============================
+# CELERY BEAT CONFIGURATION
+# Auto-Cancellation & Waitlist Feature
+# ============================
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    # Send reminder emails 24 hours before event
+    'send-booking-reminders': {
+        'task': 'booking_system.tasks.send_booking_reminders',
+        'schedule': crontab(minute=0),  # Every hour at :00
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour
+        }
+    },
+    
+    # Auto-cancel unconfirmed bookings 2 hours before event
+    'auto-cancel-unconfirmed': {
+        'task': 'booking_system.tasks.auto_cancel_unconfirmed_bookings',
+        'schedule': crontab(minute='*/30'),  # Every 30 minutes
+        'options': {
+            'expires': 1800,  # Task expires after 30 minutes
+        }
+    },
+    
+    # Process waitlist notification expirations
+    'expire-old-waitlist-notifications': {
+        'task': 'booking_system.tasks.expire_old_waitlist_notifications',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+        'options': {
+            'expires': 300,  # Task expires after 5 minutes
+        }
+    },
+}
+
+# Celery Beat will create this file to track schedules
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'

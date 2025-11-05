@@ -65,6 +65,8 @@ System designed to easily add more venues.
 | [SETUP_GUIDE.md](SETUP_GUIDE.md) | **⭐ First time?** Complete setup instructions |
 | [STARTUP_GUIDE.md](STARTUP_GUIDE.md) | **🚀 Start here daily!** How to start all servers |
 | [NOTIFICATION_SYSTEM.md](NOTIFICATION_SYSTEM.md) | **📧 Email & Notifications** Complete system documentation |
+| [GHOST_BOOKING_SOLUTION.md](GHOST_BOOKING_SOLUTION.md) | **🎯 NEW!** Auto-cancellation & Waitlist system overview |
+| [AUTO_CANCEL_WAITLIST_IMPLEMENTATION.md](AUTO_CANCEL_WAITLIST_IMPLEMENTATION.md) | **🔧 NEW!** Detailed implementation guide for auto-cancel & waitlist |
 | [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) | Complete project details and problem statement |
 | [FEATURES.md](FEATURES.md) | Detailed feature list by user role |
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Database design and relationships |

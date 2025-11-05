@@ -77,12 +77,50 @@ Connected to redis://localhost:6379/0
   . send_booking_confirmation_async
   . send_hall_admin_notification_async
   . send_welcome_email_async
+  . booking_system.tasks.send_booking_reminders
+  . booking_system.tasks.auto_cancel_unconfirmed_bookings
+  . booking_system.tasks.expire_old_waitlist_notifications
+  . booking_system.tasks.notify_waitlist_users
 celery@DESKTOP-VEFHM27 ready.
 ```
 
 ---
 
-### 4️⃣ React Frontend (Terminal 4)
+### 4️⃣ Celery Beat (Terminal 4) 🆕
+**Location**: `D:\PCCOE\Projects\BookIT\backend`
+
+**⚡ NEW**: Required for auto-cancellation & waitlist features!
+
+```powershell
+# Navigate to backend
+cd D:\PCCOE\Projects\BookIT\backend
+
+# Start Celery Beat scheduler
+.\venv\Scripts\celery.exe -A config beat -l info
+```
+
+**Expected Output**:
+```
+celery beat v5.5.3 (Opalescent) is starting.
+LocalTime -> 2025-11-05 10:00:00
+Configuration ->
+    . broker -> redis://localhost:6379/0
+    . loader -> celery.loaders.app.AppLoader
+    . scheduler -> django_celery_beat.schedulers.DatabaseScheduler
+    
+Scheduler: Sending due task send-booking-reminders (every hour)
+Scheduler: Sending due task auto-cancel-unconfirmed (every 30 mins)
+Scheduler: Sending due task expire-old-waitlist-notifications (every 5 mins)
+```
+
+**What Celery Beat Does**:
+- 📧 Sends reminder emails 24 hours before events
+- ⏰ Auto-cancels unconfirmed bookings 2 hours before events
+- 📋 Processes waitlist notifications (15-min claim window)
+
+---
+
+### 5️⃣ React Frontend (Terminal 5)
 **Location**: `D:\PCCOE\Projects\BookIT\frontend`
 
 ```powershell
@@ -125,7 +163,7 @@ npm start
 
 ## 🎯 Quick Start Commands (Copy & Paste)
 
-### For PowerShell - All 4 Servers:
+### For PowerShell - All 5 Servers (Full Stack with Auto-Cancel):
 
 **Terminal 1 - Redis:**
 ```powershell
@@ -137,12 +175,17 @@ cd C:\Users\Lenovo\Downloads\redis-x64-5.0.14.1 ; .\redis-server.exe
 cd D:\PCCOE\Projects\BookIT\backend ; .\venv\Scripts\python.exe manage.py runserver
 ```
 
-**Terminal 3 - Celery:**
+**Terminal 3 - Celery Worker:**
 ```powershell
 cd D:\PCCOE\Projects\BookIT\backend ; .\venv\Scripts\celery.exe -A config worker -l info --pool=solo
 ```
 
-**Terminal 4 - React:**
+**Terminal 4 - Celery Beat (NEW):**
+```powershell
+cd D:\PCCOE\Projects\BookIT\backend ; .\venv\Scripts\celery.exe -A config beat -l info
+```
+
+**Terminal 5 - React:**
 ```powershell
 cd D:\PCCOE\Projects\BookIT\frontend ; npm start
 ```

@@ -15,6 +15,7 @@ import VenueDetailPage from './pages/VenueDetailPage';
 import BookingsPage from './pages/BookingsPage';
 import CreateBookingPage from './pages/CreateBookingPage';
 import MyBookingsPage from './pages/MyBookingsPage';
+import MyWaitlistPage from './pages/MyWaitlistPage';
 import AdminDashboard from './pages/AdminDashboard';
 import ProfilePage from './pages/ProfilePage';
 import PublicCalendarPage from './pages/PublicCalendarPage';
@@ -129,6 +130,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <NotificationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-waitlist"
+                element={
+                  <ProtectedRoute>
+                    <MyWaitlistPage />
                   </ProtectedRoute>
                 }
               />

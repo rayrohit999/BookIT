@@ -284,3 +284,109 @@ class NotificationCreateSerializer(serializers.ModelSerializer):
             'user', 'notification_type', 'title', 'message', 'link',
             'related_booking_id', 'related_venue_id'
         ]
+
+
+class WaitlistSerializer(serializers.ModelSerializer):
+    """Serializer for Waitlist model"""
+    
+    venue_name = serializers.CharField(source='venue.name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    time_remaining = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
+    
+    class Meta:
+        from .models import Waitlist
+        model = Waitlist
+        fields = [
+            'id', 'venue', 'venue_name', 'user', 'user_email', 'user_name',
+            'date', 'start_time', 'end_time', 'created_at',
+            'notified', 'notified_at', 'claimed', 'claimed_at',
+            'expired', 'priority', 'time_remaining', 'is_expired'
+        ]
+        read_only_fields = [
+            'id', 'user', 'created_at', 'notified', 'notified_at',
+            'claimed', 'claimed_at', 'expired', 'venue_name', 
+            'user_email', 'user_name', 'time_remaining', 'is_expired'
+        ]
+    
+    def get_user_name(self, obj):
+        """Get user's full name"""
+        return obj.user.get_full_name()
+    
+    def get_time_remaining(self, obj):
+        """Get seconds remaining to claim slot"""
+        return obj.time_remaining()
+    
+    def get_is_expired(self, obj):
+        """Check if notification has expired"""
+        return obj.is_expired()
+    
+    def validate(self, data):
+        """Validate waitlist entry"""
+        user = self.context['request'].user
+        venue = data.get('venue')
+        date = data.get('date')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        
+        # Check if user already has a booking for this slot
+        from .models import Booking
+        existing_booking = Booking.objects.filter(
+            user=user,
+            venue=venue,
+            date=date,
+            start_time=start_time,
+            end_time=end_time,
+            status='confirmed'
+        ).exists()
+        
+        if existing_booking:
+            raise serializers.ValidationError(
+                "You already have a booking for this time slot"
+            )
+        
+        # Check if user already in waitlist for this slot
+        from .models import Waitlist
+        existing_waitlist = Waitlist.objects.filter(
+            user=user,
+            venue=venue,
+            date=date,
+            start_time=start_time,
+            end_time=end_time,
+            claimed=False,
+            expired=False
+        ).exists()
+        
+        if existing_waitlist:
+            raise serializers.ValidationError(
+                "You are already in the waitlist for this time slot"
+            )
+        
+        # Check max waitlist entries per day (prevent abuse)
+        from .models import Waitlist
+        daily_count = Waitlist.objects.filter(
+            user=user,
+            date=date,
+            claimed=False,
+            expired=False
+        ).count()
+        
+        if daily_count >= 3:
+            raise serializers.ValidationError(
+                "Maximum 3 waitlist entries allowed per day"
+            )
+        
+        # Validate date is in the future
+        if date < timezone.now().date():
+            raise serializers.ValidationError(
+                "Cannot join waitlist for past dates"
+            )
+        
+        # Validate times
+        if end_time <= start_time:
+            raise serializers.ValidationError(
+                "End time must be after start time"
+            )
+        
+        return data

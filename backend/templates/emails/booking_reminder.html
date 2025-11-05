@@ -1,0 +1,52 @@
+{% extends 'emails/base.html' %}
+
+{% block title %}Reminder: Upcoming Booking{% endblock %}
+
+{% block content %}
+<h1 style="color: #1976d2; margin-bottom: 20px;">Booking Reminder</h1>
+
+<p>Hi {{ user_name }},</p>
+
+<p>This is a friendly reminder about your upcoming booking:</p>
+
+<div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h2 style="color: #333; margin-top: 0;">Booking Details</h2>
+    <p><strong>Venue:</strong> {{ venue_name }}</p>
+    <p><strong>Date:</strong> {{ booking_date }}</p>
+    <p><strong>Time:</strong> {{ start_time }} - {{ end_time }}</p>
+    <p><strong>Event:</strong> {{ event_name }}</p>
+</div>
+
+<div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+    <p style="margin: 0; color: #856404;">
+        <strong>⏰ Your booking is in 24 hours!</strong>
+    </p>
+    <p style="margin: 10px 0 0 0; color: #856404;">
+        If your plans have changed, please cancel the booking to make the venue available for others.
+    </p>
+</div>
+
+<div style="margin: 30px 0; text-align: center;">
+    <a href="{{ confirm_url }}" 
+       style="background-color: #4caf50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+        Confirm Booking
+    </a>
+    
+    <a href="{{ cancel_url }}" 
+       style="background-color: #f44336; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold; margin-left: 10px;">
+        Cancel Booking
+    </a>
+</div>
+
+<div style="background-color: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0;">
+    <p style="margin: 0; font-size: 14px; color: #1976d2;">
+        <strong>Note:</strong> If you don't confirm or cancel within 22 hours, the booking will be automatically cancelled 2 hours before the event to allow others to book the venue.
+    </p>
+</div>
+
+<p>Thank you for using BookIT!</p>
+
+<p style="color: #666; font-size: 14px; margin-top: 30px;">
+    Questions? Contact us at carrerhub.com@gmail.com
+</p>
+{% endblock %}

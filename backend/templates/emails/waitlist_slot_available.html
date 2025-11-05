@@ -1,0 +1,53 @@
+{% extends 'emails/base.html' %}
+
+{% block title %}Venue Slot Available!{% endblock %}
+
+{% block content %}
+<h1 style="color: #4caf50; margin-bottom: 20px;">🎉 Great News! Venue Slot Available</h1>
+
+<p>Hi {{ user_name }},</p>
+
+<p>A venue slot you've been waiting for is now available!</p>
+
+<div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h2 style="color: #333; margin-top: 0;">Available Slot Details</h2>
+    <p><strong>Venue:</strong> {{ venue_name }}</p>
+    <p><strong>Date:</strong> {{ booking_date }}</p>
+    <p><strong>Time:</strong> {{ start_time }} - {{ end_time }}</p>
+</div>
+
+<div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ff9800; margin: 20px 0;">
+    <p style="margin: 0; color: #f57c00;">
+        <strong>⏰ Act Fast! You have 15 minutes to claim this slot.</strong>
+    </p>
+    <p style="margin: 10px 0 0 0; color: #f57c00;">
+        If you don't claim it within 15 minutes, the next person in the waitlist will be notified.
+    </p>
+</div>
+
+<div style="margin: 30px 0; text-align: center;">
+    <a href="{{ claim_url }}" 
+       style="background-color: #4caf50; color: white; padding: 15px 40px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold; font-size: 16px;">
+        Claim This Slot Now!
+    </a>
+</div>
+
+<div style="text-align: center; margin: 20px 0;">
+    <p style="font-size: 24px; font-weight: bold; color: #f57c00; margin: 0;">
+        Time Remaining: <span id="countdown">15:00</span>
+    </p>
+</div>
+
+<div style="background-color: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0;">
+    <p style="margin: 0; font-size: 14px; color: #1976d2;">
+        <strong>What happens if I claim it?</strong><br>
+        A booking will be created immediately in your name. You'll receive a confirmation email with all the details.
+    </p>
+</div>
+
+<p>Don't miss this opportunity!</p>
+
+<p style="color: #666; font-size: 14px; margin-top: 30px;">
+    Questions? Contact us at carrerhub.com@gmail.com
+</p>
+{% endblock %}

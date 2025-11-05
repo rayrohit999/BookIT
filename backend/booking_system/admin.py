@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Booking, VenueAdmin as VenueAdminModel, Notification
+from .models import Booking, VenueAdmin as VenueAdminModel, Notification, Waitlist
 
 
 @admin.register(Booking)
@@ -25,9 +25,17 @@ class BookingAdmin(admin.ModelAdmin):
         ('Status', {
             'fields': ('status', 'cancellation_reason', 'cancelled_at')
         }),
+        ('Reminder & Confirmation', {
+            'fields': ('reminder_sent', 'reminder_sent_at', 'confirmed', 'confirmed_at'),
+            'classes': ('collapse',)
+        }),
+        ('Auto-Cancellation', {
+            'fields': ('auto_cancelled', 'auto_cancelled_at', 'auto_cancel_reason'),
+            'classes': ('collapse',)
+        }),
     )
     
-    readonly_fields = ('created_at', 'updated_at', 'cancelled_at')
+    readonly_fields = ('created_at', 'updated_at', 'cancelled_at', 'reminder_sent_at', 'confirmed_at', 'auto_cancelled_at')
     
     def get_readonly_fields(self, request, obj=None):
         """Make certain fields readonly after creation"""
@@ -99,3 +107,42 @@ class NotificationAdmin(admin.ModelAdmin):
         updated = queryset.update(is_read=False, read_at=None)
         self.message_user(request, f'{updated} notification(s) marked as unread.')
     mark_as_unread.short_description = 'Mark selected as unread'
+
+
+@admin.register(Waitlist)
+class WaitlistAdmin(admin.ModelAdmin):
+    """Admin interface for Waitlist model"""
+    
+    list_display = ('user', 'venue', 'date', 'start_time', 'end_time', 'notified', 'claimed', 'expired', 'created_at')
+    list_filter = ('notified', 'claimed', 'expired', 'venue', 'date', 'created_at')
+    search_fields = ('user__email', 'user__first_name', 'user__last_name', 'venue__name')
+    ordering = ('priority', 'created_at')
+    date_hierarchy = 'date'
+    
+    fieldsets = (
+        ('Waitlist Details', {
+            'fields': ('venue', 'user', 'date', 'start_time', 'end_time', 'priority')
+        }),
+        ('Notification Status', {
+            'fields': ('notified', 'notified_at')
+        }),
+        ('Claim Status', {
+            'fields': ('claimed', 'claimed_at', 'expired')
+        }),
+    )
+    
+    readonly_fields = ('created_at', 'notified_at', 'claimed_at')
+    
+    actions = ['reset_notification', 'mark_as_expired']
+    
+    def reset_notification(self, request, queryset):
+        """Reset notification status for selected entries"""
+        updated = queryset.update(notified=False, notified_at=None, expired=False)
+        self.message_user(request, f'{updated} waitlist entr(y/ies) notification status reset.')
+    reset_notification.short_description = 'Reset notification status'
+    
+    def mark_as_expired(self, request, queryset):
+        """Mark selected entries as expired"""
+        updated = queryset.update(expired=True)
+        self.message_user(request, f'{updated} waitlist entr(y/ies) marked as expired.')
+    mark_as_expired.short_description = 'Mark as expired'

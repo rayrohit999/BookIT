@@ -27,6 +27,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import { bookingService } from '../services';
 import { formatDate, formatTime, canCancelBooking } from '../utils/dateUtils';
 import { getStatusColor, getStatusDisplayName, handleApiError } from '../utils/helpers';
+import ConfirmBookingButton from '../components/ConfirmBookingButton';
 
 const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
@@ -161,7 +162,13 @@ const MyBookingsPage = () => {
         )}
 
         {canCancel && (
-          <Box sx={{ mt: 2, textAlign: 'right' }}>
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <ConfirmBookingButton
+              booking={booking}
+              onSuccess={fetchBookings}
+              variant="contained"
+              size="medium"
+            />
             <Button
               variant="outlined"
               color="error"

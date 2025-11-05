@@ -49,6 +49,9 @@ const Layout = ({ children }) => {
               <Button color="inherit" component={Link} to="/my-bookings">
                 My Bookings
               </Button>
+              <Button color="inherit" component={Link} to="/my-waitlist">
+                My Waitlist
+              </Button>
               {isSuperAdmin() && (
                 <Button color="inherit" component={Link} to="/admin">
                   Admin

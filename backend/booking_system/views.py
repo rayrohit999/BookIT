@@ -291,6 +291,88 @@ class BookingViewSet(viewsets.ModelViewSet):
             'end_date': end_date,
             'bookings': calendar_data
         })
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def confirm(self, request, pk=None):
+        """
+        Confirm a booking to prevent auto-cancellation
+        User must own the booking
+        """
+        booking = self.get_object()
+        
+        # Check if user owns this booking
+        if booking.user != request.user:
+            return Response(
+                {'error': 'You can only confirm your own bookings'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if booking is still active
+        if booking.status != 'confirmed':
+            return Response(
+                {'error': 'Only active bookings can be confirmed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if booking is in the future
+        now = timezone.now()
+        booking_datetime = timezone.make_aware(
+            datetime.combine(booking.date, booking.start_time)
+        )
+        
+        if booking_datetime <= now:
+            return Response(
+                {'error': 'Cannot confirm past bookings'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Confirm the booking
+        booking.confirmed = True
+        booking.confirmed_at = now
+        booking.save(update_fields=['confirmed', 'confirmed_at'])
+        
+        logger.info(f"Booking {booking.id} confirmed by user {request.user.email}")
+        
+        return Response({
+            'message': 'Booking confirmed successfully',
+            'booking_id': booking.id,
+            'confirmed_at': booking.confirmed_at
+        })
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def override_autocancel(self, request, pk=None):
+        """
+        Hall Admin or Super Admin can override auto-cancellation for a booking
+        Forces confirmation to prevent auto-cancellation
+        """
+        booking = self.get_object()
+        
+        # Check if user is admin for this venue or super admin
+        user = request.user
+        is_super_admin = user.is_staff and user.role == 'super_admin'
+        is_hall_admin = VenueAdmin.objects.filter(
+            user=user,
+            venue=booking.venue
+        ).exists()
+        
+        if not (is_super_admin or is_hall_admin):
+            return Response(
+                {'error': 'Only Hall Admins or Super Admins can override auto-cancellation'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Force confirm the booking
+        booking.confirmed = True
+        booking.confirmed_at = timezone.now()
+        booking.save(update_fields=['confirmed', 'confirmed_at'])
+        
+        logger.info(f"Auto-cancellation overridden for booking {booking.id} by {user.email}")
+        
+        return Response({
+            'message': 'Auto-cancellation overridden successfully',
+            'booking_id': booking.id,
+            'overridden_by': user.email
+        })
 
 
 class VenueAdminViewSet(viewsets.ModelViewSet):
@@ -408,3 +490,218 @@ class NotificationViewSet(viewsets.ModelViewSet):
             'message': f'{deleted_count} notification(s) deleted',
             'deleted_count': deleted_count
         })
+
+
+class WaitlistViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Waitlist operations
+    Users can join waitlist for fully booked slots
+    """
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+    
+    def get_queryset(self):
+        """Users can only see their own waitlist entries"""
+        user = self.request.user
+        if user.is_staff:
+            return Booking.objects.select_related('venue', 'user').all()
+        from .models import Waitlist
+        return Waitlist.objects.filter(user=user).select_related('venue')
+    
+    def get_serializer_class(self):
+        from .serializers import WaitlistSerializer
+        return WaitlistSerializer
+    
+    def perform_create(self, serializer):
+        """Add user to waitlist"""
+        serializer.save(user=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def my_waitlist(self, request):
+        """Get current user's active waitlist entries"""
+        from .models import Waitlist
+        from .serializers import WaitlistSerializer
+        
+        entries = Waitlist.objects.filter(
+            user=request.user,
+            claimed=False,
+            expired=False
+        ).select_related('venue').order_by('date', 'start_time')
+        
+        serializer = WaitlistSerializer(entries, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def claim(self, request, pk=None):
+        """
+        Claim an available slot from waitlist
+        Creates a booking if slot is still available
+        """
+        from .models import Waitlist
+        from django.db import transaction
+        
+        waitlist_entry = self.get_object()
+        
+        # Verify user owns this waitlist entry
+        if waitlist_entry.user != request.user:
+            return Response(
+                {'error': 'You can only claim your own waitlist entries'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if already claimed
+        if waitlist_entry.claimed:
+            return Response(
+                {'error': 'This slot has already been claimed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if expired
+        if waitlist_entry.expired or waitlist_entry.is_expired():
+            waitlist_entry.expired = True
+            waitlist_entry.save(update_fields=['expired'])
+            return Response(
+                {'error': 'This notification has expired (15-minute window passed)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if notified (can only claim after notification)
+        if not waitlist_entry.notified:
+            return Response(
+                {'error': 'You have not been notified yet. Please wait your turn.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                # Check if slot is still available
+                conflicting_booking = Booking.objects.filter(
+                    venue=waitlist_entry.venue,
+                    date=waitlist_entry.date,
+                    start_time=waitlist_entry.start_time,
+                    end_time=waitlist_entry.end_time,
+                    status='confirmed'
+                ).exists()
+                
+                if conflicting_booking:
+                    return Response(
+                        {'error': 'Sorry, this slot has already been booked by someone else'},
+                        status=status.HTTP_409_CONFLICT
+                    )
+                
+                # Create the booking
+                booking = Booking.objects.create(
+                    user=waitlist_entry.user,
+                    venue=waitlist_entry.venue,
+                    date=waitlist_entry.date,
+                    start_time=waitlist_entry.start_time,
+                    end_time=waitlist_entry.end_time,
+                    event_name=f"Claimed from waitlist",
+                    event_description="Booking claimed from waitlist",
+                    expected_attendees=1,
+                    contact_number=waitlist_entry.user.email,
+                    status='confirmed',
+                    confirmed=True,
+                    confirmed_at=timezone.now()
+                )
+                
+                # Mark waitlist entry as claimed
+                waitlist_entry.claimed = True
+                waitlist_entry.claimed_at = timezone.now()
+                waitlist_entry.save()
+                
+                # Send confirmation email
+                send_booking_confirmation_smart(booking)
+                
+                # Create in-app notification
+                notify_booking_confirmed(booking)
+                
+                logger.info(f"Waitlist slot claimed by {request.user.email} - Booking {booking.id} created")
+                
+                return Response({
+                    'message': 'Slot claimed successfully!',
+                    'booking_id': booking.id,
+                    'waitlist_entry_id': waitlist_entry.id
+                }, status=status.HTTP_201_CREATED)
+                
+        except Exception as e:
+            logger.error(f"Error claiming waitlist slot: {e}")
+            return Response(
+                {'error': 'Failed to claim slot. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['delete'])
+    def leave(self, request, pk=None):
+        """Remove user from waitlist"""
+        from .models import Waitlist
+        
+        waitlist_entry = self.get_object()
+        
+        # Verify user owns this entry
+        if waitlist_entry.user != request.user:
+            return Response(
+                {'error': 'You can only remove your own waitlist entries'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Store info for response
+        venue_name = waitlist_entry.venue.name
+        date = waitlist_entry.date
+        
+        # Delete the entry
+        waitlist_entry.delete()
+        
+        logger.info(f"User {request.user.email} left waitlist for {venue_name} on {date}")
+        
+        return Response({
+            'message': 'Removed from waitlist successfully',
+            'venue': venue_name,
+            'date': str(date)
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'])
+    def check_and_join(self, request):
+        """
+        Check if a slot is available or full, and join waitlist if full
+        Convenience endpoint that combines availability check + waitlist join
+        """
+        from .serializers import WaitlistSerializer
+        
+        venue_id = request.data.get('venue')
+        date = request.data.get('date')
+        start_time = request.data.get('start_time')
+        end_time = request.data.get('end_time')
+        
+        if not all([venue_id, date, start_time, end_time]):
+            return Response(
+                {'error': 'venue, date, start_time, and end_time are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if slot is available
+        conflicting_booking = Booking.objects.filter(
+            venue_id=venue_id,
+            date=date,
+            start_time=start_time,
+            end_time=end_time,
+            status='confirmed'
+        ).exists()
+        
+        if not conflicting_booking:
+            return Response({
+                'available': True,
+                'message': 'Slot is available. You can book directly.'
+            })
+        
+        # Slot is full, add to waitlist
+        serializer = WaitlistSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response({
+                'available': False,
+                'waitlist_entry': serializer.data,
+                'message': 'Slot is full. You have been added to the waitlist.'
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
