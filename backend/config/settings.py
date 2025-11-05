@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'drf_yasg',
+    'django_celery_beat',  # Celery Beat periodic tasks
     
     # Local apps
     'accounts',
